@@ -1,6 +1,8 @@
 const express = require("express");
 const {
   registerUser,
+  verifyEmail,
+  signinCustomer,
   signInAdmin,
   getUser,
   getUsers,
@@ -14,7 +16,10 @@ const {
 const { requiresAuth } = require("../middleware/authMiddleware");
 const router = express.Router();
 
-router.post("/register_user", registerUser);
+// User registration and authentication routes (email verification implementation)
+router.post("/register_user", registerUser); // Register new user with email verification
+router.get("/verify-email", verifyEmail); // Verify email using token from email link
+router.post("/signin_customer", signinCustomer); // Customer login with email verification check
 router.post("/signin_admin", signInAdmin);
 
 router.get("/admin/:id", requiresAuth, getUser);

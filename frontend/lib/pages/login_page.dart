@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:bbb/components/app_alert_dialog.dart';
 import 'package:bbb/components/app_text_form_field.dart';
 import 'package:bbb/components/back_arrow_widget.dart';
 import 'package:bbb/components/button_widget.dart';
@@ -103,31 +104,41 @@ class _LoginPageState extends State<LoginPage> {
         isLoading = true;
       });
 
-      final url = Uri.parse(
-          'https://bbbdev1.wpenginepowered.com/wp-json/jwt-auth/v1/token');
+      final url =
+          Uri.parse('${AppConstants.serverUrl}/api/users/signin-customer');
 
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/x-www-form-urlencoded"},
         body: {
-          'username': emailAddress,
+          'email': emailAddress,
           'password': password,
         },
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200 && responseData['success'] == true) {
+        // Customer authentication successful
         await _saveLoginState(true);
-        String token = data['token'];
 
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('authToken', token);
+
+        // Save user data if available
+        if (responseData['data'] != null) {
+          final userData = responseData['data'];
+          await prefs.setString('userEmail', userData['email'] ?? emailAddress);
+          if (userData['id'] != null) {
+            await prefs.setString('userId', userData['id'].toString());
+          }
+        }
+
+        // Note: Password validation is handled by WordPress JWT auth
+        // You may need to get the token from WordPress JWT auth separately if needed
 
         // Fetch additional data for the welcome modal
         final descriptionResponse = await http.get(
-          Uri.parse(
-              '${AppConstants.serverUrl}/api/screens/get_screens'), // replace with actual endpoint
-          headers: {"Authorization": "Bearer $token"},
+          Uri.parse('${AppConstants.serverUrl}/api/screens/get_screens'),
         );
 
         if (descriptionResponse.statusCode == 200) {
@@ -143,8 +154,7 @@ class _LoginPageState extends State<LoginPage> {
               builder: (context) => MainPage(
                 showWelcomeModal: !hasSeenWelcome,
                 welcomeDescription: descriptionData['description'] ?? "",
-                welcomeImageUrl:
-                    descriptionData['vimeoId'], // pass fetched description
+                welcomeImageUrl: descriptionData['vimeoId'] ?? "",
               ),
             ),
           );
@@ -154,7 +164,32 @@ class _LoginPageState extends State<LoginPage> {
           debugPrint('this is login page ${descriptionResponse.statusCode}');
         }
       } else {
-        showBottomAlert(context, 'Login failed');
+        // Error response - show clear error message
+        String errorMessage = responseData['message'] ??
+            'Login failed. Please check your credentials and try again.';
+
+        // Handle specific error cases
+        if (responseData['error'] == 'EMAIL_NOT_VERIFIED') {
+          errorMessage =
+              'Please verify your email address before signing in. Check your inbox for the verification email.';
+        } else if (responseData['error'] == 'USER_NOT_FOUND') {
+          errorMessage =
+              'No account found with this email address. Please check your email or register a new account.';
+        } else if (responseData['error'] == 'INVALID_EMAIL') {
+          errorMessage = 'Please provide a valid email address.';
+        } else if (responseData['error'] == 'EMAIL_REQUIRED') {
+          errorMessage = 'Email address is required.';
+        }
+
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AppAlertDialog(
+              title: "Login Failed",
+              description: errorMessage,
+            );
+          },
+        );
       }
     } catch (e) {
       showBottomAlert(context, 'An error occurred');

@@ -4,13 +4,11 @@ import 'package:bbb/components/app_alert_dialog.dart';
 import 'package:bbb/components/app_text_form_field.dart';
 import 'package:bbb/components/back_arrow_widget.dart';
 import 'package:bbb/components/button_widget.dart';
-import 'package:bbb/pages/email_verification_page.dart';
 import 'package:bbb/values/app_colors.dart';
 import 'package:bbb/values/app_constants.dart';
 import 'package:bbb/values/clip_path.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class RegisterPage extends StatefulWidget {
@@ -36,67 +34,74 @@ class _RegisterPageState extends State<RegisterPage> {
       setState(() {
         isLoading = true;
       });
-      // final credentials =
-      //     await FirebaseAuth.instance.createUserWithEmailAndPassword(
-      //   email: emailAddress,
-      //   password: password,
-      // );
 
-      AddUserDetailInfo(emailController.text);
+      final Map<String, String> bodyParams = {
+        'email': emailAddress,
+        'password': password,
+        'phone': phoneController.text,
+      };
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: AppColors.primaryColor,
-          content: Text(
-            "Email Verified Successfully",
-            style: TextStyle(fontSize: 20.0),
-          ),
-        ),
+      Uri url = Uri.parse('${AppConstants.serverUrl}/api/users/register_user');
+      url = Uri.http(url.authority, url.path);
+
+      final response = await http.post(
+        url,
+        headers: <String, String>{
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: bodyParams,
       );
 
-      Navigator.push(context,
-          MaterialPageRoute(builder: (ctx) => const EmailVerificationScreen()));
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') {
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200 && responseData['success'] == true) {
+        // Show success message
         showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return const AppAlertDialog(
-                title: "",
-                description:
-                    "An account with this email already exists.\nPlease log in instead.",
-              );
-            });
+          context: context,
+          builder: (BuildContext context) {
+            return AppAlertDialog(
+              title: "Registration Successful",
+              description: responseData['message'] ?? 
+                  "Please check your email to verify your account before logging in.",
+            );
+          },
+        ).then((_) {
+          // Navigate back to login page after user acknowledges
+          Navigator.pop(context);
+        });
+      } else {
+        // Handle error response
+        String errorMessage = responseData['message'] ?? 
+            'Registration failed. Please try again.';
+        
+        if (responseData['error']) {
+          errorMessage = responseData['error'];
+        }
+
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AppAlertDialog(
+              title: "Registration Failed",
+              description: errorMessage,
+            );
+          },
+        );
       }
-      // Optionally show an error message to the user
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return const AppAlertDialog(
+            title: "Error",
+            description: "An error occurred during registration. Please try again.",
+          );
+        },
+      );
     } finally {
       setState(() {
         isLoading = false;
       });
-    }
-  }
-
-  Future AddUserDetailInfo(String email) async {
-    final Map<String, String> bodyParams = {
-      'email': email,
-    };
-
-    Uri url = Uri.parse('${AppConstants.serverUrl}/api/users/register_user');
-    url = Uri.http(url.authority, url.path);
-
-    String? userIdToken = await FirebaseAuth.instance.currentUser?.getIdToken();
-    final response = await http.post(
-      url,
-      headers: <String, String>{
-        'FIREBASE_AUTH_TOKEN': userIdToken!,
-      },
-      body: bodyParams,
-    );
-
-    if (response.statusCode == 200) {
-      print("Succesfully added user data");
-    } else {
-      throw Exception('Failed to create user data');
     }
   }
 

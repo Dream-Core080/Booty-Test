@@ -12,10 +12,11 @@ const {
 const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
 const bucketName = process.env.GOOGLE_CLOUD_BUCKET_NAME;
 
-// Initialize GCS client with your service account credentials
+// Initialize GCS client with service account credentials
+// Uses environment variable for key file path, with fallback to default location
 const storage = new Storage({
-  keyFilename: "./utils/files/google/bbb-app-d4b41-8bb202309cf1.json", // Replace with the path to your JSON key file
-  projectId, // Replace with your Google Cloud project ID
+  keyFilename: process.env.GOOGLE_CLOUD_KEY_FILE || "./utils/files/google/bbb-app-d4b41-8bb202309cf1.json", // Path to service account JSON key file
+  projectId, // Google Cloud project ID from environment variable
 });
 
 /**

@@ -57,6 +57,30 @@ app.use("/api/categories", require("./routes/categoryRoutes"));
 app.use("/api/staffs", require("./routes/staffRoutes"));
 app.use("/api/challenges", require("./routes/challengeRoutes"));
 app.use("/api/woocommerce", require("./routes/woocommerceRoute"));
+
+/**
+ * Global error handling middleware
+ * Catches all errors from async handlers and formats consistent error responses
+ * 
+ * @param {Error} err - Error object from previous middleware
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || res.statusCode || 500;
+  const message = err.message || 'Internal server error';
+  
+  // Return consistent error response format
+  res.status(statusCode).json({
+    success: false,
+    error: message,
+    message: message,
+    // Include stack trace only in development mode
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});
+
 const server = http.createServer(app);
 
 // Error handling for server startup

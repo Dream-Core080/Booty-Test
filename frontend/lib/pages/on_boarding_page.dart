@@ -70,7 +70,7 @@ class _OnBoardingPageState extends State<OnBoardingPage> {
         isLoading = true;
       });
 
-      SharedPreferences prefs = await SharedPreferences.getInstance();
+      SharedPreferences prefs   = await SharedPreferences.getInstance();
 
       final descriptionResponse = await http.get(
         Uri.parse(
@@ -111,21 +111,11 @@ class _OnBoardingPageState extends State<OnBoardingPage> {
     var media = MediaQuery.of(context).size;
 
     void onPressCreateAccount() async {
-      final Uri url = Uri.parse('https://bbbdev1.wpenginepowered.com/shop');
-
-      try {
-        if (await canLaunchUrl(url)) {
-          await launchUrl(
-            url,
-            mode: LaunchMode
-                .externalApplication, // Ensures the URL opens in a browser
-          );
-        } else {
-          debugPrint(
-              'Cannot launch the URL, not supported or no suitable app found.');
-        }
-      } catch (e) {
-        debugPrint('Error launching URL: $e');
+      if(!isLoading){
+        Navigator.pushNamed(
+          context,
+          AppRoutes.registerScreen,
+        );
       }
     }
 
